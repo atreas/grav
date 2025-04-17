@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkpoint Sound Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .test-button {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background-color: #2980b9;
+        }
+        .sound-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+            border-radius: 5px;
+            font-family: monospace;
+            height: 300px;
+            overflow-y: auto;
+        }
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Checkpoint Sound Test</h1>
+    
+    <div class="sound-info">
+        <h2>Test Checkpoint Sound</h2>
+        <p>This page specifically tests the checkpoint sound to help diagnose issues.</p>
+        
+        <div>
+            <button class="test-button" id="playCheckpoint">Play Checkpoint Sound</button>
+            <button class="test-button" id="checkFiles">Check Available Files</button>
+            <button class="test-button" id="stopSound">Stop Sound</button>
+        </div>
+    </div>
+    
+    <div class="file-info" id="fileInfo">
+        <h3>File Information</h3>
+        <p>Click "Check Available Files" to see which checkpoint sound files are available.</p>
+    </div>
+    
+    <div id="log">
+        <div>Checkpoint sound test console log:</div>
+    </div>
+    
+    <script>
+        // Store audio object
+        let checkpointAudio = null;
+        
+        // Log function
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message); // Also log to browser console
+        }
+        
+        // Check if a file exists
+        async function checkFileExists(url) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                return response.ok;
+            } catch (error) {
+                log(`Error checking file ${url}: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Check available checkpoint sound files
+        async function checkAvailableFiles() {
+            const fileInfo = document.getElementById('fileInfo');
+            fileInfo.innerHTML = '<h3>File Information</h3>';
+            
+            const formats = ['mp3', 'wav', 'ogg'];
+            const basePath = 'checkpoint';
+            let foundAny = false;
+            
+            const resultsList = document.createElement('ul');
+            
+            for (const format of formats) {
+                const path = `${basePath}.${format}`;
+                log(`Checking if ${path} exists...`);
+                
+                const exists = await checkFileExists(path);
+                
+                const listItem = document.createElement('li');
+                if (exists) {
+                    listItem.textContent = `✅ ${path} - File exists`;
+                    foundAny = true;
+                } else {
+                    listItem.textContent = `❌ ${path} - File not found`;
+                }
+                resultsList.innerHTML += listItem.outerHTML;
+            }
+            
+            fileInfo.appendChild(resultsList);
+            
+            if (!foundAny) {
+                const warning = document.createElement('p');
+                warning.style.color = 'red';
+                warning.textContent = 'No checkpoint sound files found! Make sure to add at least one file named checkpoint.mp3, checkpoint.wav, or checkpoint.ogg in the sounds directory.';
+                fileInfo.appendChild(warning);
+            }
+        }
+        
+        // Play checkpoint sound
+        function playCheckpointSound() {
+            log('Attempting to play checkpoint sound...');
+            
+            // If we already have an audio object, stop it
+            if (checkpointAudio) {
+                checkpointAudio.pause();
+                checkpointAudio.currentTime = 0;
+            }
+            
+            // Try different formats
+            tryLoadCheckpointSound();
+        }
+        
+        // Try loading checkpoint sound in different formats
+        function tryLoadCheckpointSound() {
+            const formats = ['mp3', 'wav', 'ogg'];
+            
+            // Try each format
+            tryNextFormat(0);
+            
+            function tryNextFormat(index) {
+                if (index >= formats.length) {
+                    log('Could not load checkpoint sound in any format');
+                    return;
+                }
+                
+                const format = formats[index];
+                const path = `checkpoint.${format}`;
+                
+                log(`Trying to load ${path}...`);
+                
+                const audio = new Audio(path);
+                
+                // Set up event listeners
+                audio.addEventListener('canplaythrough', () => {
+                    log(`Successfully loaded checkpoint sound in ${format} format`);
+                    checkpointAudio = audio;
+                    
+                    // Play the sound
+                    const playPromise = audio.play();
+                    
+                    if (playPromise !== undefined) {
+                        playPromise
+                            .then(() => {
+                                log(`✅ Playing checkpoint sound (${format})`);
+                            })
+                            .catch(error => {
+                                log(`❌ Error playing sound: ${error.message}`);
+                                
+                                // Some browsers require user interaction
+                                if (error.name === 'NotAllowedError') {
+                                    log('⚠️ Browser requires user interaction to play audio');
+                                }
+                            });
+                    } else {
+                        log(`Playing checkpoint sound (${format}) - no promise returned`);
+                    }
+                }, { once: true });
+                
+                audio.addEventListener('error', () => {
+                    log(`Failed to load ${path}, trying next format`);
+                    tryNextFormat(index + 1);
+                }, { once: true });
+                
+                // Start loading
+                audio.load();
+            }
+        }
+        
+        // Stop sound
+        function stopSound() {
+            if (checkpointAudio) {
+                checkpointAudio.pause();
+                checkpointAudio.currentTime = 0;
+                log('Stopped checkpoint sound');
+            } else {
+                log('No checkpoint sound is currently playing');
+            }
+        }
+        
+        // Set up event listeners
+        document.getElementById('playCheckpoint').addEventListener('click', playCheckpointSound);
+        document.getElementById('checkFiles').addEventListener('click', checkAvailableFiles);
+        document.getElementById('stopSound').addEventListener('click', stopSound);
+        
+        // Log initial message
+        log('Checkpoint sound test page loaded. Click buttons to test.');
+    </script>
+</body>
+</html>
