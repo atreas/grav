@@ -26,9 +26,12 @@ mkdir -p client/sounds
 cp -r server/sounds/* client/sounds/
 
 # Create a modified server.js for the client that points to the deployed server
+echo "Enter your Render server URL (e.g., https://your-app-name.onrender.com): "
+read RENDER_URL
+
 cat > client/server-config.js << EOF
 // Configuration for the deployed game
-const SERVER_URL = 'https://grav-server.onrender.com'; // Update this with your Render URL when deployed
+const SERVER_URL = '$RENDER_URL'; // Your Render server URL
 EOF
 
 # Create a modified index.html that uses the server-config.js
