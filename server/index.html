@@ -10,9 +10,11 @@
     <div class="game-container">
         <canvas id="gameCanvas"></canvas>
         <div class="controls-info">
-            <p>Controls: Left/Right Arrows to rotate, Up Arrow for thrust, R to restart</p>
+            <p>Controls: Left/Right Arrows to rotate, Up Arrow or Space for thrust, R to restart (any key when game over), M to mute/unmute, ~ to toggle debug panel</p>
         </div>
-        <div id="debug-info" class="debug-info"></div>
+        <div id="debug-info" class="debug-info hidden"></div>
+        <div id="player-positions" class="player-positions"></div>
+        <!-- Audio controls removed from UI, M key still works -->
     </div>
 
     <!-- Add these before your game.js script -->
@@ -27,6 +29,7 @@
     <script src="race.js"></script>
     <script src="renderer.js"></script>
     <script src="ui.js"></script>
+    <script src="audio.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

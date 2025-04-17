@@ -62,32 +62,48 @@ class Renderer {
             this.ctx.arc(screenX, screenY, checkpoint.radius, 0, Math.PI * 2);
 
             // Style based on checkpoint status
-            if (i === currentCheckpoint && raceActive) {
-                // Current checkpoint - pulsing effect
+            if (checkpoint.active && raceActive) {
+                // Active checkpoint - pulsing effect
                 const pulseSize = Math.sin(performance.now() / 200) * 0.2 + 0.8;
                 this.ctx.lineWidth = 5 * pulseSize;
                 this.ctx.strokeStyle = '#f1c40f'; // Yellow
                 this.ctx.setLineDash([15, 10]);
-            } else if (checkpoint.reached) {
-                // Reached checkpoint
-                this.ctx.lineWidth = 3;
-                this.ctx.strokeStyle = '#2ecc71'; // Green
-                this.ctx.setLineDash([]);
+
+                // Add a glow effect to make it more visible
+                this.ctx.shadowColor = '#f1c40f';
+                this.ctx.shadowBlur = 15 * pulseSize;
+
+                // Fill with semi-transparent color
+                this.ctx.fillStyle = 'rgba(241, 196, 15, 0.3)';
+                this.ctx.fill();
+
+                // Draw checkpoint number
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = '16px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(checkpoint.number.toString(), screenX, screenY);
             } else {
-                // Unreached checkpoint
+                // Inactive checkpoint
                 this.ctx.lineWidth = 2;
                 this.ctx.strokeStyle = checkpoint.color;
                 this.ctx.setLineDash([10, 10]);
+
+                // Fill with semi-transparent color
+                this.ctx.fillStyle = 'rgba(52, 152, 219, 0.1)';
+                this.ctx.fill();
+            }
+
+            // Always draw checkpoint number
+            if (!checkpoint.active || !raceActive) {
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                this.ctx.font = '14px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(checkpoint.number.toString(), screenX, screenY);
             }
 
             this.ctx.stroke();
-
-            // Draw checkpoint number
-            this.ctx.font = '24px Arial';
-            this.ctx.fillStyle = '#fff';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(checkpoint.number.toString(), screenX, screenY);
 
             // Reset line dash
             this.ctx.setLineDash([]);
@@ -108,6 +124,18 @@ class Renderer {
         this.ctx.font = '24px Arial';
         this.ctx.fillStyle = '#fff';
         this.ctx.fillText('Press any arrow key to start', this.canvas.width / 2, this.canvas.height / 2 + 20);
+
+        // Make sure controls info is visible on start screen
+        const controlsInfo = document.querySelector('.controls-info');
+        if (controlsInfo) {
+            controlsInfo.classList.remove('hidden');
+        }
+
+        // Draw the help panel on the start screen
+        const game = window.game; // Access the game instance
+        if (game && game.ui) {
+            game.ui.drawHelpPanel();
+        }
     }
 
     drawGameOverScreen() {
@@ -121,7 +149,7 @@ class Renderer {
 
         this.ctx.font = '24px Arial';
         this.ctx.fillStyle = '#fff';
-        this.ctx.fillText('Press R to restart', this.canvas.width / 2, this.canvas.height / 2 + 20);
+        this.ctx.fillText('Press any key to restart', this.canvas.width / 2, this.canvas.height / 2 + 20);
     }
 
     drawFPS(fps) {

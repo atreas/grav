@@ -4,21 +4,37 @@ class RaceSystem {
         this.gameHeight = gameHeight;
         this.game = game; // Reference to the game
         this.checkpoints = [];
-        this.currentCheckpoint = 0;
-        this.laps = 0;
-        this.raceStartTime = 0;
-        this.lastLapTime = 0;
-        this.bestLapTime = Infinity;
-        this.checkpointTimes = [];
-        this.raceActive = false;
+        this.activeCheckpoint = -1; // Index of the currently active checkpoint
+        this.points = 0; // Player's points
+        this.gameStartTime = 0; // When the game started
+        this.gameActive = false; // Whether the game is active
         this.level = null; // Will be set by the game
+        this.timeRemaining = 0; // Time remaining in the match (in milliseconds)
+        this.matchDuration = 300000; // Default match duration: 5 minutes
+        this.preMatchCountdown = 30; // Default pre-match countdown: 30 seconds
 
         // Checkpoints will be initialized after level is set
     }
 
-    setLevel(level) {
+    setLevel(level, forceReinitialize = false) {
+        // Store the old level reference
+        const oldLevel = this.level;
+
+        // Update level reference
         this.level = level;
-        this.initializeCheckpoints();
+
+        // Only initialize checkpoints if:
+        // 1. This is the first time setting a level (oldLevel is null)
+        // 2. We're explicitly told to reinitialize (new match starting)
+        // 3. The level dimensions have changed
+        if (oldLevel === null || forceReinitialize ||
+            (oldLevel && (oldLevel.getWidth() !== level.getWidth() ||
+                         oldLevel.getHeight() !== level.getHeight()))) {
+            console.log('Initializing new checkpoints');
+            this.initializeCheckpoints();
+        } else {
+            console.log('Keeping existing checkpoints');
+        }
     }
 
     // Check if a checkpoint would collide with any wall
@@ -95,9 +111,9 @@ class RaceSystem {
             x: centerX,
             y: centerY + 200, // A bit below center
             radius: checkpointRadius,
-            color: '#f1c40f', // Yellow for the first checkpoint
+            color: '#3498db', // Blue for inactive checkpoint
             number: 1,
-            reached: false
+            active: false
         });
 
         // Create remaining checkpoints in random positions around the map
@@ -145,113 +161,148 @@ class RaceSystem {
                 x: x,
                 y: y,
                 radius: finalRadius,
-                color: '#3498db', // Blue for regular checkpoints
+                color: '#3498db', // Blue for inactive checkpoints
                 number: i + 1,
-                reached: false
+                active: false
             });
         }
     }
 
     update(ship) {
-        // Don't check checkpoints if race isn't active
-        if (!this.raceActive) {
-            // Start the race when the ship passes through the first checkpoint
-            const checkpoint = this.checkpoints[0];
+        // Don't check checkpoints if game isn't active
+        if (!this.gameActive) {
+            // Game is not active, no updates needed
+            return null;
+        }
+
+        // Game is ongoing, no time limit
+
+        // If no active checkpoint, activate one
+        if (this.activeCheckpoint === -1) {
+            this.activateRandomCheckpoint();
+        }
+
+        // Check if ship has reached the active checkpoint
+        if (this.activeCheckpoint !== -1) {
+            const checkpoint = this.checkpoints[this.activeCheckpoint];
             const distance = Math.sqrt(
                 Math.pow(ship.x - checkpoint.x, 2) +
                 Math.pow(ship.y - checkpoint.y, 2)
             );
 
+            // Log distance to active checkpoint (occasionally)
+            if (Math.random() < 0.01) { // Log only 1% of the time to avoid console spam
+                console.log(`Distance to active checkpoint ${checkpoint.number}: ${distance.toFixed(2)}, ` +
+                           `Threshold: ${(checkpoint.radius + ship.size).toFixed(2)}`);
+            }
+
             if (distance < checkpoint.radius + ship.size) {
-                this.startRace();
+                // Player reached the active checkpoint
+                console.log(`🏁 Active checkpoint ${checkpoint.number} reached! Distance: ${distance.toFixed(2)}`);
+
+                // Award 1 point
+                this.points += 1;
+
+                // Deactivate current checkpoint
+                checkpoint.active = false;
+                checkpoint.color = '#3498db'; // Blue for inactive
+
+                // Activate a new random checkpoint
+                this.activateRandomCheckpoint();
+
+                // If we have a network manager, send point update to server
+                if (this.game && this.game.networkManager) {
+                    // Send point update to server
+                    this.game.networkManager.sendPointUpdate(this.points);
+                }
+
+                // This is the message that triggers the checkpoint sound!
+                const message = `Checkpoint reached! +1 point (${this.points} total)`;
+                console.log(`Returning message: "${message}"`);
+                return message;
             }
-            return;
-        }
-
-        // Check if ship has reached the current checkpoint
-        const checkpoint = this.checkpoints[this.currentCheckpoint];
-        const distance = Math.sqrt(
-            Math.pow(ship.x - checkpoint.x, 2) +
-            Math.pow(ship.y - checkpoint.y, 2)
-        );
-
-        if (distance < checkpoint.radius + ship.size) {
-            // Mark checkpoint as reached
-            checkpoint.reached = true;
-
-            // Record checkpoint time
-            const now = performance.now();
-            this.checkpointTimes.push(now);
-
-            // Move to next checkpoint
-            this.currentCheckpoint = (this.currentCheckpoint + 1) % this.checkpoints.length;
-
-            // If we've reached the first checkpoint again, complete a lap
-            if (this.currentCheckpoint === 0) {
-                this.completeLap();
-            }
-
-            // If we have a network manager, send checkpoint update to server
-            if (this.game && this.game.networkManager) {
-                // Send checkpoint update to server
-                this.game.networkManager.sendCheckpointUpdate(this.currentCheckpoint, this.laps);
-            }
-
-            return `Checkpoint ${checkpoint.number} reached!`;
         }
 
         return null;
     }
 
-    startRace() {
-        this.raceActive = true;
-        this.raceStartTime = performance.now();
-        this.laps = 0;
-        this.currentCheckpoint = 1; // Move to the next checkpoint
-        this.checkpointTimes = [this.raceStartTime];
-        this.checkpoints[0].reached = true;
-        return 'Race started! Complete the figure-eight track.';
-    }
+    startGame(matchDuration) {
+        this.gameActive = true;
+        this.gameStartTime = performance.now();
+        this.points = 0;
+        this.activeCheckpoint = -1; // No active checkpoint yet
 
-    completeLap() {
-        this.laps++;
-        const now = performance.now();
-        const lapTime = now - (this.lastLapTime || this.raceStartTime);
-        this.lastLapTime = now;
-
-        // Check if this is a new best lap
-        let message;
-        if (lapTime < this.bestLapTime) {
-            this.bestLapTime = lapTime;
-            message = `New best lap! Time: ${(lapTime / 1000).toFixed(2)} seconds`;
-        } else {
-            message = `Lap ${this.laps} completed! Time: ${(lapTime / 1000).toFixed(2)} seconds`;
+        // Set match duration if provided
+        if (matchDuration) {
+            this.matchDuration = matchDuration;
         }
 
-        // Reset checkpoint reached status
+        // Initialize time remaining to full match duration
+        this.timeRemaining = this.matchDuration;
+
+        // Reset all checkpoints
         this.checkpoints.forEach(checkpoint => {
-            checkpoint.reached = false;
+            checkpoint.active = false;
+            checkpoint.color = '#3498db'; // Blue for inactive
         });
-        this.checkpoints[0].reached = true; // First checkpoint is reached when completing a lap
 
-        return message;
+        // Activate a random checkpoint
+        this.activateRandomCheckpoint();
+
+        return 'Game started! Collect points by reaching checkpoints and destroying other ships!';
     }
 
-    getCurrentLapTime() {
-        if (!this.raceActive) return 0;
+    activateRandomCheckpoint() {
+        // Deactivate current checkpoint if there is one
+        if (this.activeCheckpoint !== -1) {
+            this.checkpoints[this.activeCheckpoint].active = false;
+            this.checkpoints[this.activeCheckpoint].color = '#3498db'; // Blue for inactive
+        }
 
-        const now = performance.now();
-        return now - (this.lastLapTime || this.raceStartTime);
+        // Choose a random checkpoint
+        this.activeCheckpoint = Math.floor(Math.random() * this.checkpoints.length);
+
+        // Activate the chosen checkpoint
+        this.checkpoints[this.activeCheckpoint].active = true;
+        this.checkpoints[this.activeCheckpoint].color = '#f1c40f'; // Yellow for active
+
+        console.log(`Activated checkpoint ${this.checkpoints[this.activeCheckpoint].number}`);
     }
 
-    getRaceInfo() {
+    addPoints(amount) {
+        this.points += amount;
+
+        // If we have a network manager, send point update to server
+        if (this.game && this.game.networkManager) {
+            this.game.networkManager.sendPointUpdate(this.points);
+        }
+
+        return this.points;
+    }
+
+    // Set points directly (used for server synchronization)
+    setPoints(points) {
+        console.log(`RaceSystem: Setting points from ${this.points} to ${points}`);
+        this.points = points;
+        return this.points;
+    }
+
+    getTimeRemaining() {
+        return this.timeRemaining;
+    }
+
+    updateTimeRemaining(timeRemaining) {
+        this.timeRemaining = timeRemaining;
+    }
+
+    getGameInfo() {
         return {
-            active: this.raceActive,
-            laps: this.laps,
-            currentCheckpoint: this.currentCheckpoint,
+            active: this.gameActive,
+            points: this.points,
+            timeRemaining: this.timeRemaining,
+            activeCheckpoint: this.activeCheckpoint,
             checkpointCount: this.checkpoints.length,
-            currentLapTime: this.getCurrentLapTime(),
-            bestLapTime: this.bestLapTime
+            activeCheckpointNumber: this.activeCheckpoint !== -1 ? this.checkpoints[this.activeCheckpoint].number : 0
         };
     }
 
@@ -260,13 +311,16 @@ class RaceSystem {
     }
 
     reset() {
-        this.raceActive = false;
-        this.laps = 0;
-        this.currentCheckpoint = 0;
-        this.bestLapTime = Infinity;
-        this.checkpoints.forEach(checkpoint => {
-            checkpoint.reached = false;
-        });
+        this.gameActive = false;
+        this.points = 0;
+
+        // Only reset the active checkpoint, but don't regenerate checkpoints
+        // This ensures checkpoint positions remain consistent during a match
+        if (this.activeCheckpoint !== -1) {
+            this.checkpoints[this.activeCheckpoint].active = false;
+            this.checkpoints[this.activeCheckpoint].color = '#3498db'; // Blue for inactive
+        }
+        this.activeCheckpoint = -1;
     }
 }
 

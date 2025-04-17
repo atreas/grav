@@ -27,6 +27,9 @@ class RemotePlayer {
         distance: 120
       };
 
+      // Add properties needed for collision detection and physics
+      this.mass = 1; // Same mass as local ship for collision physics
+
       // Create trail
       this.trail = [];
       this.maxTrailLength = 20; // Shorter than local player for performance
@@ -76,6 +79,29 @@ class RemotePlayer {
       // Smooth movement
       this.wreckingBall.x += (targetX - this.wreckingBall.x) * 0.1;
       this.wreckingBall.y += (targetY - this.wreckingBall.y) * 0.1;
+    }
+
+    // Add collision detection methods to the remote player's wrecking ball
+    initWreckingBallCollision() {
+      if (!this.wreckingBall.checkShipCollision) {
+        // Add the checkShipCollision method to the wrecking ball
+        this.wreckingBall.checkShipCollision = (ship) => {
+          // Calculate distance between ball and ship
+          const dx = this.wreckingBall.x - ship.x;
+          const dy = this.wreckingBall.y - ship.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          // Check if ball and ship are close enough to collide
+          const collisionThreshold = this.wreckingBall.size * 1.4 + ship.size; // 1.4 to account for spikes
+
+          if (distance < collisionThreshold) {
+            console.log('Remote wrecking ball collision with ship detected!', distance);
+            return true;
+          }
+
+          return false;
+        };
+      }
     }
 
     updateTrail() {

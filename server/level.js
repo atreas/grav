@@ -1,5 +1,5 @@
 class Level {
-    constructor(width, height) {
+    constructor(width, height, levelData = null) {
         this.width = width;
         this.height = height;
         this.segments = [];
@@ -16,9 +16,24 @@ class Level {
             radius: safeRadius
         });
 
-        // Create level boundaries and obstacles
-        this.createBoundaries();
-        this.addPlatforms();
+        if (levelData) {
+            // Use server-provided level data
+            this.loadFromData(levelData);
+        } else {
+            // Create level boundaries and obstacles locally (fallback)
+            this.createBoundaries();
+            this.addPlatforms();
+        }
+    }
+
+    // Load level from server-provided data
+    loadFromData(levelData) {
+        // Set dimensions if provided
+        if (levelData.width) this.width = levelData.width;
+        if (levelData.height) this.height = levelData.height;
+
+        // Load segments directly
+        this.segments = levelData.segments || [];
     }
     createBoundaries() {
         // Create solid boundaries around the level

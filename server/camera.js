@@ -7,7 +7,7 @@ class Camera {
         this.y = 0;
 
         // Zoom properties
-        this.zoomLevel = 1.0; // Default zoom level (1.0 = 100%)
+        this.zoomLevel = 0.9; // Default zoom level (0.9 = 90%, one level zoomed out from original)
         this.minZoom = 0.2;  // Maximum zoom out (20% - shows the whole map)
         this.maxZoom = 2.0;  // Maximum zoom in (200%)
         this.zoomStep = 0.1; // How much to change zoom per key press
@@ -108,5 +108,19 @@ class Camera {
     // Get current zoom level
     getZoomLevel() {
         return this.zoomLevel;
+    }
+
+    // Center the camera on a specific position
+    centerOn(x, y) {
+        // Calculate the position to center the camera on the given coordinates
+        this.x = x - (this.canvas.width / 2 / this.zoomLevel);
+        this.y = y - (this.canvas.height / 2 / this.zoomLevel);
+
+        // Clamp camera to level boundaries with some margin
+        if (this.zoomLevel > this.minZoom * 1.5) {
+            const margin = 200; // Allow camera to go slightly beyond level boundaries
+            this.x = Math.max(-margin, Math.min(this.x, this.levelWidth - (this.canvas.width / this.zoomLevel) + margin));
+            this.y = Math.max(-margin, Math.min(this.y, this.levelHeight - (this.canvas.height / this.zoomLevel) + margin));
+        }
     }
 }

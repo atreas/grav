@@ -14,6 +14,15 @@ class InputHandler {
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
             e.preventDefault();
         }
+
+        // Toggle debug panel with tilde key
+        if (e.key === '`' || e.key === '~') {
+            const debugPanel = document.getElementById('debug-info');
+            if (debugPanel) {
+                debugPanel.classList.toggle('hidden');
+            }
+            e.preventDefault();
+        }
     }
 
     handleKeyUp(e) {

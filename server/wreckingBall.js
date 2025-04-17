@@ -24,7 +24,6 @@ class WreckingBall {
     }
 
     update() {
-
         // Apply gravity
         this.vy += this.gravity;
 
@@ -35,6 +34,9 @@ class WreckingBall {
         // Update position
         this.x += this.vx;
         this.y += this.vy;
+
+        // Check for collision with level boundaries
+        this.checkLevelCollision();
 
         // Calculate distance to ship
         const dx = this.x - this.ship.x;
@@ -62,6 +64,31 @@ class WreckingBall {
             const correction = (currentDistance - this.distance) * 0.1;
             this.x -= nx * correction;
             this.y -= ny * correction;
+        }
+    }
+
+    // Check for collision with level boundaries
+    checkLevelCollision() {
+        // Get level from ship
+        if (!this.ship.level) return;
+
+        const level = this.ship.level;
+        const segments = level.getSegments();
+
+        for (const segment of segments) {
+            // Calculate distance to segment
+            const distance = this.distanceToSegment(
+                this.x, this.y,
+                segment.x1, segment.y1,
+                segment.x2, segment.y2
+            );
+
+            // Check for collision with the ball including spikes
+            if (distance < this.size * 1.4) { // 1.4 to account for spikes
+                // Make the ball bounce off the wall
+                this.bounceOffWall(segment);
+                break;
+            }
         }
     }
 
@@ -164,27 +191,117 @@ class WreckingBall {
         ctx.restore();
     }
 
-    // Check collision with level boundaries
+    // Legacy method for compatibility - replaced by checkLevelCollision
     checkCollision(level) {
-        const segments = level.getSegments();
-        let collision = false;
+        console.warn('WreckingBall.checkCollision is deprecated, use checkLevelCollision instead');
+        return false;
+    }
 
-        for (const segment of segments) {
-            // Calculate distance to segment
-            const distance = this.distanceToSegment(
-                this.x, this.y,
-                segment.x1, segment.y1,
-                segment.x2, segment.y2
-            );
+    // Check collision with another ship
+    checkShipCollision(otherShip) {
+        // Calculate distance between ball and ship
+        const dx = this.x - otherShip.x;
+        const dy = this.y - otherShip.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
 
-            // Check for collision with the ball including spikes
-            if (distance < this.size * 1.4) { // 1.4 to account for spikes
-                collision = true;
-                break;
-            }
+        // Check if ball and ship are close enough to collide
+        const collisionThreshold = this.size * 1.4 + otherShip.size; // 1.4 to account for spikes
+
+        if (distance < collisionThreshold) {
+            console.log('Wrecking ball collision with ship detected!', distance);
+            return true;
         }
 
-        return collision;
+        return false;
+    }
+
+    // Check collision with another wrecking ball
+    checkBallCollision(otherBall) {
+        // Calculate distance between balls
+        const dx = this.x - otherBall.x;
+        const dy = this.y - otherBall.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Check if balls are close enough to collide
+        const collisionThreshold = this.size * 1.4 + otherBall.size * 1.4; // 1.4 to account for spikes
+
+        if (distance < collisionThreshold) {
+            console.log('Ball-to-ball collision detected!', distance);
+
+            // Make balls stick together for half a second
+            this.stickToBall(otherBall);
+            return true;
+        }
+
+        return false;
+    }
+
+    // Make the ball bounce off a wall segment
+    bounceOffWall(segment) {
+        // Calculate normal vector of the wall segment
+        const dx = segment.x2 - segment.x1;
+        const dy = segment.y2 - segment.y1;
+        const length = Math.sqrt(dx * dx + dy * dy);
+
+        if (length > 0) {
+            // Calculate normal vector (perpendicular to the wall)
+            const nx = -dy / length; // Normal x component
+            const ny = dx / length;  // Normal y component
+
+            // Calculate dot product of velocity and normal
+            const dotProduct = this.vx * nx + this.vy * ny;
+
+            // Calculate reflection vector
+            const reflectionX = this.vx - 2 * dotProduct * nx;
+            const reflectionY = this.vy - 2 * dotProduct * ny;
+
+            // Apply reflection with some energy loss
+            const bounceFactor = 0.7; // 0.7 means 70% of energy is preserved
+            this.vx = reflectionX * bounceFactor;
+            this.vy = reflectionY * bounceFactor;
+
+            // Add a small random variation to make bounces more interesting
+            const randomFactor = 0.3;
+            this.vx += (Math.random() - 0.5) * randomFactor;
+            this.vy += (Math.random() - 0.5) * randomFactor;
+        }
+    }
+
+    // Make balls stick together for half a second
+    stickToBall(otherBall) {
+        // Set a timer to release after 500ms if not already sticking
+        if (!this.stickingToBall) {
+            this.stickingToBall = true;
+            this.stickTarget = otherBall;
+
+            // Store original velocities
+            this.originalVx = this.vx;
+            this.originalVy = this.vy;
+
+            // Reduce velocities to create sticking effect
+            this.vx *= 0.2;
+            this.vy *= 0.2;
+
+            // Set a timeout to release after 500ms
+            setTimeout(() => {
+                this.stickingToBall = false;
+                this.stickTarget = null;
+
+                // Apply a small repulsion force when releasing
+                const dx = this.x - otherBall.x;
+                const dy = this.y - otherBall.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance > 0) {
+                    const nx = dx / distance;
+                    const ny = dy / distance;
+
+                    const forceMagnitude = 2;
+                    this.vx += nx * forceMagnitude;
+                    this.vy += ny * forceMagnitude;
+                }
+            }, 500);
+        }
     }
 
     // Calculate distance from point to line segment (same as in Ship class)

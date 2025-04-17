@@ -37,26 +37,63 @@ class Ship {
 
         // Add color property (default color, will be overridden by network)
         this.color = '#3498db';
+
+        // Invincibility status
+        this.invincible = true; // Start as invincible
+
+        // Landing status
+        this.landed = false; // Track if the ship has landed
     }
 
     update() {
-        // Apply rotation with smoother control
-        if (this.rotatingLeft) {
-            this.rotation -= this.rotationSpeed;
-        }
-        if (this.rotatingRight) {
-            this.rotation += this.rotationSpeed;
-        }
+        // If ship is landed, only allow rotation and thrust to take off
+        if (this.landed) {
+            // Allow rotation even when landed
+            if (this.rotatingLeft) {
+                this.rotation -= this.rotationSpeed;
+            }
+            if (this.rotatingRight) {
+                this.rotation += this.rotationSpeed;
+            }
 
-        // Apply thrust with better control
-        if (this.thrusting) {
-            // Gradually increase thrust for smoother acceleration
-            const thrustFactor = Math.min(1, this.vx * this.vx + this.vy * this.vy < 1 ? 1.5 : 1);
-            this.ax = Math.sin(this.rotation) * this.thrustPower * thrustFactor;
-            this.ay = -Math.cos(this.rotation) * this.thrustPower * thrustFactor;
+            // Only apply thrust if thrusting (to take off)
+            if (this.thrusting) {
+                // Apply thrust to take off
+                const thrustFactor = 1.5; // Extra thrust to take off
+                this.ax = Math.sin(this.rotation) * this.thrustPower * thrustFactor;
+                this.ay = -Math.cos(this.rotation) * this.thrustPower * thrustFactor;
+
+                // Reset landed state when thrusting
+                this.landed = false;
+                console.log('Taking off from landed state');
+            } else {
+                // Keep ship still when landed and not thrusting
+                this.ax = 0;
+                this.ay = 0;
+                this.vx = 0;
+                this.vy = 0;
+                return; // Skip the rest of the update when landed
+            }
         } else {
-            this.ax = 0;
-            this.ay = 0;
+            // Normal flight controls when not landed
+            // Apply rotation with smoother control
+            if (this.rotatingLeft) {
+                this.rotation -= this.rotationSpeed;
+            }
+            if (this.rotatingRight) {
+                this.rotation += this.rotationSpeed;
+            }
+
+            // Apply thrust with better control
+            if (this.thrusting) {
+                // Gradually increase thrust for smoother acceleration
+                const thrustFactor = Math.min(1, this.vx * this.vx + this.vy * this.vy < 1 ? 1.5 : 1);
+                this.ax = Math.sin(this.rotation) * this.thrustPower * thrustFactor;
+                this.ay = -Math.cos(this.rotation) * this.thrustPower * thrustFactor;
+            } else {
+                this.ax = 0;
+                this.ay = 0;
+            }
         }
 
         // Apply gravity (slightly less when thrusting upward)
@@ -134,6 +171,21 @@ class Ship {
             ctx.fill();
         }
 
+        // Draw invincibility shield if active
+        if (this.invincible) {
+            // Draw a pulsing shield around the ship
+            const pulseSize = Math.sin(performance.now() / 200) * 0.2 + 1.2;
+            const shieldSize = this.size * pulseSize;
+
+            ctx.beginPath();
+            ctx.arc(0, 0, shieldSize, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
         ctx.restore();
     }
 
@@ -199,6 +251,15 @@ class Ship {
         const segments = level.getSegments();
         let closestDistance = Infinity;
         let collision = false;
+        let isSoftCollision = false;
+
+        // Calculate current velocity magnitude
+        const currentVelocity = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        const softCollisionThreshold = 2.0; // Increased threshold for soft landing/collision
+
+        // Calculate vertical velocity component (for landing detection)
+        const verticalVelocity = Math.abs(this.vy);
+        const landingThreshold = 1.5; // Threshold for vertical velocity during landing
 
         for (const segment of segments) {
             // Calculate distance to segment
@@ -216,39 +277,109 @@ class Ship {
             // Check for collision with reduced sensitivity
             if (distance < this.size / 4) {
                 collision = true;
-                console.log('Ship collision with level detected!', distance);
+
+                // Check if this is a soft collision (slow speed) or a landing
+                // For landing: check if vertical velocity is low enough and ship is mostly vertical
+                const isLanding = verticalVelocity < landingThreshold && Math.abs(this.vx) < 1.0;
+
+                if (currentVelocity < softCollisionThreshold || isLanding) {
+                    isSoftCollision = true;
+                    console.log('Soft ship collision with level detected!',
+                        'Distance:', distance,
+                        'Total Velocity:', currentVelocity,
+                        'Vertical Velocity:', verticalVelocity,
+                        'Horizontal Velocity:', Math.abs(this.vx),
+                        'Is Landing:', isLanding);
+
+                    // Actually stop the ship when it lands
+                    if (isLanding) {
+                        // Apply a strong damping to velocity
+                        this.vx *= 0.1; // Almost stop horizontal movement
+                        this.vy *= 0.1; // Almost stop vertical movement
+
+                        // Apply a small bounce effect
+                        this.vy = -this.vy * 0.2;
+
+                        // Set landed state if velocity is very low
+                        if (Math.abs(this.vx) < 0.3 && Math.abs(this.vy) < 0.3) {
+                            this.landed = true;
+                            console.log('Ship has landed and stopped');
+                        }
+                    }
+                } else {
+                    console.log('Hard ship collision with level detected!',
+                        'Distance:', distance,
+                        'Total Velocity:', currentVelocity,
+                        'Vertical Velocity:', verticalVelocity,
+                        'Horizontal Velocity:', Math.abs(this.vx));
+                }
                 break;
             }
         }
 
-        // Check wrecking ball collision with level
-        if (!collision) {
-            collision = this.wreckingBall.checkCollision(level);
-            if (collision) {
-                console.log('Wrecking ball collision with level detected!');
-            }
-        }
-
-        // Check if ship collides with its own wrecking ball
-        if (!collision) {
-            const dx = this.x - this.wreckingBall.x;
-            const dy = this.y - this.wreckingBall.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            // Check collision with the ball including spikes
-            if (distance < this.size + this.wreckingBall.size * 1.4) {
-                collision = true;
-                console.log('Ship collision with wrecking ball detected!', distance);
-            }
-        }
+        // Note: Wrecking ball collisions are handled separately in the WreckingBall class
+        // The chain is purely visual and has no collision detection
 
         // Log closest distance for debugging
         if (Math.random() < 0.01) { // Only log occasionally to avoid spam
-            console.log('Closest distance:', closestDistance);
+            console.log('Closest distance:', closestDistance, 'Current velocity:', currentVelocity);
         }
 
-        return collision;
+        // Return an object with collision info
+        return {
+            collision: collision,
+            isSoft: isSoftCollision,
+            velocity: currentVelocity
+        };
     }
+
+    // Check collision with another ship
+    checkShipCollision(otherShip) {
+        // Calculate distance between ships
+        const dx = this.x - otherShip.x;
+        const dy = this.y - otherShip.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Check if ships are close enough to collide
+        // Only check ship-to-ship collision, not including chains
+        const collisionThreshold = this.size + otherShip.size;
+
+        if (distance < collisionThreshold) {
+            // Calculate relative velocity between ships
+            const relVx = this.vx - otherShip.vx;
+            const relVy = this.vy - otherShip.vy;
+            const relativeVelocity = Math.sqrt(relVx * relVx + relVy * relVy);
+
+            // Threshold for soft collision
+            const softCollisionThreshold = 2.0; // Increased threshold for ship-to-ship collisions
+
+            // Determine if this is a soft collision
+            const isSoftCollision = relativeVelocity < softCollisionThreshold;
+
+            console.log('Ship-to-ship collision detected!', distance, 'Relative velocity:', relativeVelocity, 'Soft collision:', isSoftCollision);
+
+            // Return an object with collision info
+            return {
+                collision: true,
+                isSoft: isSoftCollision,
+                velocity: relativeVelocity
+            };
+        }
+
+        return {
+            collision: false,
+            isSoft: false,
+            velocity: 0
+        };
+    }
+
+    // Check collision with another ship's wrecking ball (disabled - chain is only rendered)
+    checkWreckingBallCollision() {
+        // Wrecking ball collisions disabled
+        return false;
+    }
+
+    // Ship-to-ship collisions are now fatal instead of bouncing
 
     // Calculate distance from point to line segment
     distanceToSegment(px, py, x1, y1, x2, y2) {
