@@ -7,8 +7,24 @@ const LevelGenerator = require('./levelGenerator');
 
 // Create the Express app
 const app = express();
+
+// Add CORS middleware for Express
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
+
 const server = http.createServer(app);
-const io = socketIO(server);
+
+// Configure Socket.IO with CORS options
+const io = socketIO(server, {
+  cors: {
+    origin: ["https://atreas.github.io", "http://localhost:3001"],
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
 // Create level generator
 const levelGenerator = new LevelGenerator();
