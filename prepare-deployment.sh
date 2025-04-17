@@ -4,26 +4,26 @@
 mkdir -p client
 
 # Copy client-side files to client directory
-cp server/index.html client/
-cp server/style.css client/
-cp server/audio.js client/
-cp server/camera.js client/
-cp server/game.js client/
-cp server/input.js client/
-cp server/level.js client/
-cp server/network.js client/
-cp server/remote-player.js client/
-cp server/renderer.js client/
-cp server/ship.js client/
-cp server/ui.js client/
-cp server/wreckingBall.js client/
-cp server/race.js client/
+cp index.html client/
+cp style.css client/
+cp audio.js client/
+cp camera.js client/
+cp game.js client/
+cp input.js client/
+cp level.js client/
+cp network.js client/
+cp remote-player.js client/
+cp renderer.js client/
+cp ship.js client/
+cp ui.js client/
+cp wreckingBall.js client/
+cp race.js client/
 
 # Create sounds directory in client
 mkdir -p client/sounds
 
 # Copy sound files
-cp -r server/sounds/* client/sounds/
+cp -r sounds/* client/sounds/
 
 # Create a modified server.js for the client that points to the deployed server
 # Use hardcoded Render URL
@@ -35,9 +35,9 @@ const SERVER_URL = '$RENDER_URL'; // Your Render server URL
 EOF
 
 # Create a modified index.html that uses the server-config.js
-sed 's|<script src="/socket.io/socket.io.js"></script>|<script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>\n    <script src="server-config.js"></script>|g' server/index.html > client/index.html
+sed 's|<script src="/socket.io/socket.io.js"></script>|<script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>\n    <script src="server-config.js"></script>|g' index.html > client/index.html
 
 # Create a modified network.js that uses the SERVER_URL
-sed 's|this.socket = io();|this.socket = io(SERVER_URL);|g' server/network.js > client/network.js
+sed 's|this.socket = io();|this.socket = io(SERVER_URL);|g' network.js > client/network.js
 
 echo "Deployment files prepared. Client files are in the 'client' directory."

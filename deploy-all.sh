@@ -39,9 +39,20 @@ fi
 # Create a new gh-pages-new branch
 git checkout -b gh-pages-new
 git rm -rf .
-git checkout main -- client
-cp -r client/* .
-rm -rf client
+
+# Check if client directory exists
+if [ -d "../client" ]; then
+  git checkout main -- client
+  cp -r client/* .
+  rm -rf client
+else
+  # If client directory doesn't exist, run prepare-deployment.sh first
+  git checkout main -- prepare-deployment.sh
+  bash prepare-deployment.sh
+  cp -r client/* .
+  rm -rf client
+fi
+
 touch .nojekyll
 git add .
 git commit -m "Deploy client: $COMMIT_MESSAGE"
