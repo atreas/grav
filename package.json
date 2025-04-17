@@ -5,7 +5,7 @@
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
-    "prepare-deployment": "./prepare-deployment.sh",
+    "prepare-deployment": "bash prepare-deployment.sh",
     "deploy-client": "git subtree push --prefix client origin gh-pages"
   },
   "dependencies": {
