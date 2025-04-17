@@ -40,18 +40,15 @@ fi
 git checkout -b gh-pages-new
 git rm -rf .
 
-# Check if client directory exists
-if [ -d "../client" ]; then
-  git checkout main -- client
-  cp -r client/* .
-  rm -rf client
-else
-  # If client directory doesn't exist, run prepare-deployment.sh first
-  git checkout main -- prepare-deployment.sh
-  bash prepare-deployment.sh
-  cp -r client/* .
-  rm -rf client
-fi
+# Always run prepare-deployment.sh to ensure client files are up-to-date
+git checkout main
+git checkout main -- prepare-deployment.sh
+git checkout main -- index.html style.css audio.js camera.js game.js input.js level.js network.js remote-player.js renderer.js ship.js ui.js wreckingBall.js race.js
+git checkout main -- sounds
+bash prepare-deployment.sh
+git checkout gh-pages-new
+cp -r client/* .
+rm -rf client
 
 touch .nojekyll
 git add .
