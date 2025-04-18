@@ -2,6 +2,7 @@
 
 # Create deployment directory if it doesn't exist
 mkdir -p deploy
+mkdir -p deploy/shared
 
 # Clean up any existing files
 rm -rf deploy/*
@@ -14,6 +15,9 @@ cp client/*.html deploy/
 cp client/*.css deploy/
 cp client/*.js deploy/
 cp client/config.js deploy/
+
+# Copy shared files
+cp shared/*.js deploy/shared/
 
 # Copy sound files
 cp -r client/assets/sounds/* deploy/assets/sounds/

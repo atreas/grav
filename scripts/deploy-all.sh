@@ -20,7 +20,7 @@ git push origin main
 
 # Check if the push was successful
 if [ $? -ne 0 ]; then
-  echo "Error: Failed to push changes to GitHub. Aborting deployment."
+  echo "Error: Failed to push GitHub. Aborting deployment."
   exit 1
 fi
 
@@ -38,7 +38,10 @@ fi
 
 # Create a new gh-pages-new branch
 git checkout -b gh-pages-new
+
+# Remove everything except the deploy directory
 git rm -rf .
+rm -f README.md  # Explicitly remove README.md
 
 # Copy the prepared deployment files
 cp -r deploy/* .
@@ -46,8 +49,29 @@ rm -rf deploy
 
 # Add .nojekyll file to prevent Jekyll processing
 touch .nojekyll
-git add .
+
+# Create a minimal index.html that redirects to the game if it doesn't exist
+if [ ! -f index.html ]; then
+  cat > index.html << EOF
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="refresh" content="0; url='client/index.html'" />
+</head>
+<body>
+    <p>Please wait while you're redirected to the game...</p>
+</body>
+</html>
+EOF
+fi
+
+# Add all files
+git add -A
+
+# Commit changes
 git commit -m "Deploy client: $COMMIT_MESSAGE"
+
+# Force push to gh-pages
 git push -f origin gh-pages-new:gh-pages
 
 # Step 4: Return to main branch
