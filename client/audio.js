@@ -137,15 +137,15 @@ class AudioManager {
     initSounds() {
         // Create a list of sounds to load
         const soundsToLoad = [
-            { name: 'thrust', path: 'sounds/thrust' },
-            { name: 'collision', path: 'sounds/collision' },
-            { name: 'checkpoint', path: 'sounds/checkpoint' },
-            { name: 'lap_complete', path: 'sounds/lap_complete' },
-            { name: 'race_start', path: 'sounds/race_start' },
-            { name: 'countdown', path: 'sounds/countdown' },
-            { name: 'countdown_go', path: 'sounds/countdown_go' },
-            { name: 'button_click', path: 'sounds/button_click' },
-            { name: 'background_music', path: 'sounds/background_music', loop: true }
+            { name: 'thrust', path: 'assets/sounds/thrust' },
+            { name: 'collision', path: 'assets/sounds/collision' },
+            { name: 'checkpoint', path: 'assets/sounds/checkpoint' },
+            { name: 'lap_complete', path: 'assets/sounds/lap_complete' },
+            { name: 'race_start', path: 'assets/sounds/race_start' },
+            { name: 'countdown', path: 'assets/sounds/countdown' },
+            { name: 'countdown_go', path: 'assets/sounds/countdown_go' },
+            { name: 'button_click', path: 'assets/sounds/button_click' },
+            { name: 'background_music', path: 'assets/sounds/background_music', loop: true }
         ];
 
         // Load all sounds

@@ -9,6 +9,8 @@ package-lock.json
 dist/
 build/
 out/
+deploy/
+client/build/
 
 # Environment variables
 .env

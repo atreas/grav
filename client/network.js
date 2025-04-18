@@ -12,7 +12,7 @@ class NetworkManager {
 
     connect() {
       // Connect to the server
-      this.socket = io();
+      this.socket = io(SERVER_URL);
 
       // Set up event handlers
       this.setupEventHandlers();
@@ -220,6 +220,14 @@ class NetworkManager {
       this.socket.on('game-end', (data) => {
         console.log('Game ended. Winners:', data.winners);
         this.game.endGame(data.winners);
+      });
+
+      // Game stopped by admin
+      this.socket.on('game-stopped', (data) => {
+        console.log('Game stopped by admin:', data.message);
+
+        // Call the game's stopGame method to properly handle the event
+        this.game.stopGame();
       });
 
       // Sync with ongoing countdown

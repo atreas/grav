@@ -2,6 +2,36 @@
 
 A multiplayer 2D game with thrust controls, gravity mechanics, and wrecking ball physics.
 
+## Project Structure
+
+```
+grav/
+├── client/                  # Client-side code
+│   ├── assets/              # Static assets
+│   │   └── sounds/          # Sound files
+│   ├── src/                 # Client source code
+│   │   ├── game/            # Game logic
+│   │   ├── rendering/       # Rendering logic
+│   │   ├── network/         # Network-related code
+│   │   ├── audio/           # Audio-related code
+│   │   └── main.js          # Entry point
+│   ├── index.html           # Main HTML file
+│   ├── style.css            # Main CSS file
+│   └── config.js            # Client configuration
+├── server/                  # Server-side code
+│   ├── src/                 # Server source code
+│   │   ├── game/            # Game logic
+│   │   └── server.js        # Main server file
+│   └── package.json         # Server dependencies
+├── shared/                  # Shared code between client and server
+│   ├── constants.js         # Game constants
+│   └── utils.js             # Utility functions
+├── scripts/                 # Build and deployment scripts
+│   ├── prepare-deployment.sh
+│   └── deploy-all.sh
+└── package.json             # Root package.json
+```
+
 ## Game Features
 
 - Thrust controls and gravity mechanics
@@ -16,17 +46,16 @@ A multiplayer 2D game with thrust controls, gravity mechanics, and wrecking ball
 
 ### Client Deployment (GitHub Pages)
 
-1. Run the preparation script:
+1. Run the deployment script with a commit message:
    ```
-   npm run prepare-deployment
+   npm run deploy-client "Your commit message"
+   ```
+   or
+   ```
+   bash scripts/deploy-all.sh "Your commit message"
    ```
 
-2. Deploy the client to GitHub Pages:
-   ```
-   npm run deploy-client
-   ```
-
-3. Your game will be available at: https://atreas.github.io/grav/
+2. Your game will be available at: https://atreas.github.io/grav/
 
 ### Server Deployment (Render)
 
@@ -37,27 +66,41 @@ A multiplayer 2D game with thrust controls, gravity mechanics, and wrecking ball
 3. Configure the following settings:
    - **Name**: grav-server (or any name you prefer)
    - **Environment**: Node
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-   - **Root Directory**: `/` (or `/server` if you prefer)
+   - **Build Command**: `cd server && npm install`
+   - **Start Command**: `cd server && npm start`
+   - **Root Directory**: `/`
 
-4. After deployment, update the `SERVER_URL` in `client/server-config.js` with your Render URL
+4. After deployment, update the `SERVER_URL` in `client/config.js` with your Render URL
 
 5. Redeploy the client to GitHub Pages
 
 ## Local Development
 
-1. Install dependencies:
+1. Install dependencies for both client and server:
    ```
    npm install
+   cd server && npm install
    ```
 
-2. Start the server:
+2. Clean up duplicate files (if you've just restructured the project):
    ```
-   npm start
+   npm run cleanup
    ```
 
-3. Open your browser to `http://localhost:3001`
+3. Start the server:
+   ```
+   npm run start:server
+   ```
+   or for development with auto-reload:
+   ```
+   npm run dev:server
+   ```
+
+4. Open the client HTML file in your browser:
+   ```
+   open client/index.html
+   ```
+   or simply open `client/index.html` in your browser
 
 ## Controls
 

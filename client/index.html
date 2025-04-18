@@ -17,21 +17,30 @@
         <!-- Audio controls removed from UI, M key still works -->
     </div>
 
-    <!-- Add these before your game.js script -->
+    <!-- Shared libraries -->
+    <script src="/shared/constants.js"></script>
+    <script src="/shared/utils.js"></script>
+
+    <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
-    <script src="server-config.js"></script>
+    <script src="config.js"></script>
+
+    <!-- Game modules -->
     <script src="remote-player.js"></script>
     <script src="network.js"></script>
     <script src="wreckingBall.js"></script>
     <script src="ship.js"></script>
     <script src="level.js"></script>
     <script src="input.js"></script>
-    <script src="camera.js"></script>
     <script src="race.js"></script>
+    <script src="camera.js"></script>
     <script src="renderer.js"></script>
     <script src="ui.js"></script>
     <script src="audio.js"></script>
     <script src="game.js"></script>
+
+    <!-- Main entry point -->
+    <script src="main.js"></script>
 </body>
 </html>
 

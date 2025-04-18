@@ -1,9 +1,15 @@
-// server.js
+// server/src/server.js
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
 const path = require('path');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser');
 const LevelGenerator = require('./levelGenerator');
+const constants = require('../shared/constants');
+const utils = require('../shared/utils');
+const adminConfig = require('./admin-config');
 
 // Create the Express app
 const app = express();
@@ -14,6 +20,30 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   next();
 });
+
+// Parse request body
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+
+// Set up cookie parser and session middleware
+app.use(cookieParser());
+app.use(session({
+  secret: adminConfig.sessionSecret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: adminConfig.sessionMaxAge
+  }
+}));
+
+// Authentication middleware for admin routes
+const authenticateAdmin = (req, res, next) => {
+  if (req.session && req.session.isAdmin) {
+    return next();
+  }
+  return res.redirect('/admin/login');
+};
 
 const server = http.createServer(app);
 
@@ -32,8 +62,155 @@ const levelGenerator = new LevelGenerator();
 // Current level data
 let currentLevelData = null;
 
-// Serve static files from the current directory
-app.use(express.static(path.join(__dirname)));
+// Serve static files from the client directory
+app.use(express.static(path.join(__dirname, '../client')));
+
+// Serve shared files
+app.use('/shared', express.static(path.join(__dirname, '../shared')));
+
+// Admin routes
+// Login page
+app.get('/admin/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin', 'login.html'));
+});
+
+// Login authentication
+app.post('/admin/login', (req, res) => {
+  const { username, password } = req.body;
+
+  if (username === adminConfig.username && password === adminConfig.password) {
+    req.session.isAdmin = true;
+    return res.redirect('/admin');
+  }
+
+  return res.redirect('/admin/login?error=1');
+});
+
+// Admin dashboard
+app.get('/admin', authenticateAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin', 'index.html'));
+});
+
+// Admin API endpoints
+app.get('/admin/api/players', authenticateAdmin, (req, res) => {
+  console.log('Admin API - Get Players - Connected players:', players.size);
+
+  const playerList = Array.from(players.values()).map(player => {
+    console.log('Player data:', player.id, player.name, player.color);
+    return {
+      id: player.id,
+      name: player.name,
+      color: player.color,
+      points: player.points,
+      x: Math.round(player.x),
+      y: Math.round(player.y),
+      invincible: player.invincible
+    };
+  });
+
+  console.log('Admin API - Sending player list:', playerList.length);
+  console.log('Game state:', { gameInProgress, countdownActive, celebrationActive, matchTimeRemaining });
+
+  res.json({
+    players: playerList,
+    gameInProgress,
+    countdownActive,
+    celebrationActive,
+    matchTimeRemaining
+  });
+});
+
+// Kick player
+app.post('/admin/api/kick', authenticateAdmin, (req, res) => {
+  const { playerId } = req.body;
+  console.log('Admin API - Kick player request for ID:', playerId);
+
+  if (players.has(playerId)) {
+    console.log('Player found in players map');
+
+    // Get the socket by ID
+    const socketId = playerId;
+    const socket = io.sockets.sockets.get(socketId);
+
+    if (socket) {
+      console.log('Socket found, disconnecting player');
+
+      // Disconnect the socket
+      socket.disconnect(true);
+
+      // Remove player from the game
+      players.delete(playerId);
+      usedColors.delete(playerId);
+
+      // Notify other players
+      io.emit('player-left', { id: playerId });
+
+      console.log('Player kicked successfully');
+      return res.json({ success: true, message: 'Player kicked successfully' });
+    } else {
+      console.log('Socket not found for player ID');
+      return res.status(404).json({ success: false, message: 'Socket not found for player' });
+    }
+  }
+
+  console.log('Player not found in players map');
+  return res.status(404).json({ success: false, message: 'Player not found' });
+});
+
+// Stop current match
+app.post('/admin/api/stop-match', authenticateAdmin, (req, res) => {
+  console.log('Admin API - Stop match request');
+
+  if (gameInProgress) {
+    console.log('Game in progress, stopping match');
+
+    // Clear game timer
+    if (gameTimer) {
+      clearInterval(gameTimer);
+      gameTimer = null;
+    }
+
+    // Reset game state
+    gameInProgress = false;
+    countdownActive = false;
+    celebrationActive = false;
+
+    // Notify all players that the game has been stopped by admin
+    console.log('Emitting game-stopped event to all clients');
+    io.emit('game-stopped', { message: 'Game stopped by administrator' });
+
+    return res.json({ success: true, message: 'Match stopped successfully' });
+  }
+
+  console.log('No match in progress');
+  return res.json({ success: false, message: 'No match in progress' });
+});
+
+// Start new match
+app.post('/admin/api/start-match', authenticateAdmin, (req, res) => {
+  console.log('Admin API - Start match request');
+
+  if (!gameInProgress && !countdownActive && !celebrationActive) {
+    console.log('Starting game countdown');
+    startGameCountdown();
+    return res.json({ success: true, message: 'Match countdown started' });
+  }
+
+  console.log('Cannot start match - game state:', { gameInProgress, countdownActive, celebrationActive });
+  return res.status(400).json({
+    success: false,
+    message: 'Cannot start match: game in progress, countdown active, or celebration active'
+  });
+});
+
+// Logout
+app.get('/admin/logout', (req, res) => {
+  req.session.destroy();
+  res.redirect('/admin/login');
+});
+
+// Serve admin static files
+app.use('/admin/assets', express.static(path.join(__dirname, 'admin', 'assets')));
 
 // Game state
 const players = new Map(); // playerId -> playerData

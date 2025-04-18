@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Script to commit and push all server changes and deploy client files
-# Usage: bash deploy-all.sh "Your commit message"
+# Usage: bash scripts/deploy-all.sh "Your commit message"
 
 # Check if commit message is provided
 if [ -z "$1" ]; then
   echo "Error: Please provide a commit message."
-  echo "Usage: bash deploy-all.sh \"Your commit message\""
+  echo "Usage: bash scripts/deploy-all.sh \"Your commit message\""
   exit 1
 fi
 
@@ -26,7 +26,7 @@ fi
 
 # Step 2: Prepare client files for deployment
 echo "===== Step 2: Preparing client files for deployment ====="
-bash prepare-deployment.sh
+bash scripts/prepare-deployment.sh
 
 # Step 3: Create and push gh-pages branch
 echo "===== Step 3: Deploying client files to GitHub Pages ====="
@@ -40,16 +40,11 @@ fi
 git checkout -b gh-pages-new
 git rm -rf .
 
-# Always run prepare-deployment.sh to ensure client files are up-to-date
-git checkout main
-git checkout main -- prepare-deployment.sh
-git checkout main -- index.html style.css audio.js camera.js game.js input.js level.js network.js remote-player.js renderer.js ship.js ui.js wreckingBall.js race.js
-git checkout main -- sounds
-bash prepare-deployment.sh
-git checkout gh-pages-new
-cp -r client/* .
-rm -rf client
+# Copy the prepared deployment files
+cp -r deploy/* .
+rm -rf deploy
 
+# Add .nojekyll file to prevent Jekyll processing
 touch .nojekyll
 git add .
 git commit -m "Deploy client: $COMMIT_MESSAGE"
@@ -59,7 +54,10 @@ git push -f origin gh-pages-new:gh-pages
 echo "===== Step 4: Returning to main branch ====="
 git checkout main
 
+# Clean up
+rm -rf deploy
+
 echo "===== Deployment complete! ====="
-echo "Server changes pushed to main branch"
-echo "Client files deployed to GitHub Pages"
-echo "Your game should be available at: https://atreas.github.io/grav/"
+echo "Server code pushed to main branch"
+echo "Client code deployed to gh-pages branch"
+echo "Visit https://atreas.github.io/grav/ to see your deployed game"

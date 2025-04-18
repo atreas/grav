@@ -878,6 +878,41 @@ class Game {
         }
     }
 
+    stopGame() {
+        console.log('Game stopped by admin');
+
+        // Fully reset game state
+        if (this.raceSystem) {
+            // Reset race system
+            this.raceSystem.reset();
+
+            // Make sure game is marked as inactive
+            this.raceSystem.gameActive = false;
+
+            // Reset time remaining
+            this.raceSystem.timeRemaining = this.raceSystem.matchDuration;
+        }
+
+        // Reset countdown states
+        this.countdownActive = false;
+        this.preMatchCountdownValue = 5;
+        this.preMatchCountdownActive = false;
+        this.preMatchCountdownValue = 30;
+
+        // Play sound to indicate game stopped
+        if (this.audioManager) {
+            this.audioManager.play('button_click');
+        }
+
+        // Add notification
+        this.ui.addNotification('Game stopped by administrator', 5000);
+
+        // Update debug info
+        this.ui.updateDebugInfo('Game stopped by administrator', this, this.ship, { active: false, points: 0, timeRemaining: 0 });
+
+        console.log('Game state fully reset by admin stop command');
+    }
+
     showCelebration(winners) {
         // Display winner celebration UI
         if (winners && winners.length > 0) {
