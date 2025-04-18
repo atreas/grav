@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .test-button {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background-color: #2980b9;
+        }
+        .sound-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #log {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+            border-radius: 5px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Game Sound Test Page</h1>
+    
+    <div class="sound-info">
+        <h2>Test Your Sound Files</h2>
+        <p>This page helps you test if your sound files are working correctly. Click the buttons below to play each sound.</p>
+        
+        <div>
+            <button class="test-button" onclick="testSound('thrust')">Test Thrust</button>
+            <button class="test-button" onclick="testSound('collision')">Test Collision</button>
+            <button class="test-button" onclick="testSound('checkpoint')">Test Checkpoint</button>
+            <button class="test-button" onclick="testSound('lap_complete')">Test Lap Complete</button>
+            <button class="test-button" onclick="testSound('race_start')">Test Race Start</button>
+            <button class="test-button" onclick="testSound('countdown')">Test Countdown</button>
+            <button class="test-button" onclick="testSound('countdown_go')">Test GO!</button>
+            <button class="test-button" onclick="testSound('button_click')">Test Button Click</button>
+            <button class="test-button" onclick="testSound('background_music')">Test Background Music</button>
+        </div>
+        
+        <div>
+            <button class="test-button" onclick="stopAllSounds()">Stop All Sounds</button>
+        </div>
+    </div>
+    
+    <div id="log">
+        <div>Sound test console log:</div>
+    </div>
+    
+    <script>
+        // Store audio objects
+        const audioObjects = {};
+        
+        // Log function
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        // Test a sound with format fallback
+        function testSound(name) {
+            log(`Testing sound: ${name}`);
+            
+            // If we already have this audio object, stop and reset it
+            if (audioObjects[name]) {
+                audioObjects[name].pause();
+                audioObjects[name].currentTime = 0;
+                audioObjects[name].play()
+                    .then(() => log(`Playing ${name}`))
+                    .catch(error => log(`Error playing ${name}: ${error.message}`));
+                return;
+            }
+            
+            // Try different formats
+            const formats = ['mp3', 'wav', 'ogg'];
+            const basePath = `./${name}`;
+            
+            tryNextFormat(name, basePath, formats, 0);
+        }
+        
+        // Try loading a sound in different formats
+        function tryNextFormat(name, basePath, formats, index) {
+            if (index >= formats.length) {
+                log(`Could not load ${name} in any format`);
+                return;
+            }
+            
+            const format = formats[index];
+            const path = `${basePath}.${format}`;
+            
+            log(`Trying to load ${path}`);
+            
+            const audio = new Audio(path);
+            
+            audio.addEventListener('canplaythrough', () => {
+                log(`Successfully loaded ${name} in ${format} format`);
+                audioObjects[name] = audio;
+                audio.play()
+                    .then(() => log(`Playing ${name}`))
+                    .catch(error => log(`Error playing ${name}: ${error.message}`));
+            }, { once: true });
+            
+            audio.addEventListener('error', () => {
+                log(`Failed to load ${path}, trying next format`);
+                tryNextFormat(name, basePath, formats, index + 1);
+            }, { once: true });
+            
+            // Start loading
+            audio.load();
+        }
+        
+        // Stop all sounds
+        function stopAllSounds() {
+            log('Stopping all sounds');
+            Object.values(audioObjects).forEach(audio => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+        }
+        
+        // Log initial message
+        log('Sound test page loaded. Click buttons to test sounds.');
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "grav-game",
+  "version": "1.0.0",
+  "description": "A multiplayer 2D game with thrust controls and gravity mechanics",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "prepare-deployment": "bash prepare-deployment.sh",
+    "deploy-client": "git subtree push --prefix client origin gh-pages"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^4.4.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
