@@ -1,0 +1,7 @@
+npm run deploy-client "Added camera debug visualization and fixed boundary rendering"
+```
+
+OR directly:
+
+```bash
+bash scripts/deploy-all.sh "Added camera debug visualization and fixed boundary rendering"

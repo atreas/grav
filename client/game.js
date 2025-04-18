@@ -1,15 +1,9 @@
-// Wait for the DOM to load
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize the game
-    const game = new Game();
-    game.init();
-});
 
 class Game {
     constructor() {
-        // Game dimensions
-        this.gameWidth = 4000; // Large level width
-        this.gameHeight = 3000; // Large level height
+        // Game dimensions - use constants
+        this.gameWidth = GAME_WIDTH;   // 8000
+        this.gameHeight = GAME_HEIGHT; // 4000
 
         // Game state
         this.gameStarted = false; // Flag to track if game has started
@@ -339,6 +333,12 @@ class Game {
             // Check for collisions with remote players
             if (this.networkManager && !fatalCollision) {
                 for (const remotePlayer of this.networkManager.remotePlayers.values()) {
+                    // Skip collision checks for inactive players (players who haven't started playing yet)
+                    // We determine this by checking if they've moved from their initial position
+                    const hasPlayerMoved = Math.abs(remotePlayer.vx) > 0.1 || Math.abs(remotePlayer.vy) > 0.1;
+                    if (!hasPlayerMoved) {
+                        continue; // Skip this player for collision detection
+                    }
                     // Check for ship-to-ship collision
                     const shipCollision = this.ship.checkShipCollision(remotePlayer);
                     if (shipCollision.collision) {

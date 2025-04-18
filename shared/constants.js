@@ -2,8 +2,8 @@
 // Game constants shared between client and server
 
 // Game dimensions
-const GAME_WIDTH = 4000;
-const GAME_HEIGHT = 3000;
+const GAME_WIDTH = 8000;
+const GAME_HEIGHT = 4000;
 
 // Ship properties
 const SHIP_SIZE = 15;
@@ -54,3 +54,4 @@ if (typeof module !== 'undefined' && module.exports) {
         WIN_MARGIN
     };
 }
+

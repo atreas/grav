@@ -36,124 +36,58 @@ class Level {
         this.segments = levelData.segments || [];
     }
     createBoundaries() {
-        // Create solid boundaries around the level
-        const margin = 50; // Margin from the edge
-        const thickness = 20; // Thickness of the boundary walls
+        const thickness = 50; // Much thicker boundaries
 
         // Top boundary
         this.segments.push({
-            x1: 0,
-            y1: 0,
-            x2: this.width,
-            y2: 0
+            x1: -thickness,
+            y1: -thickness,
+            x2: this.width + thickness,
+            y2: -thickness,
+            isBoundary: true,
+            thickness: thickness
         });
 
         // Bottom boundary
         this.segments.push({
-            x1: 0,
-            y1: this.height,
-            x2: this.width,
-            y2: this.height
+            x1: -thickness,
+            y1: this.height + thickness,
+            x2: this.width + thickness,
+            y2: this.height + thickness,
+            isBoundary: true,
+            thickness: thickness
         });
 
         // Left boundary
         this.segments.push({
-            x1: 0,
-            y1: 0,
-            x2: 0,
-            y2: this.height
+            x1: -thickness,
+            y1: -thickness,
+            x2: -thickness,
+            y2: this.height + thickness,
+            isBoundary: true,
+            thickness: thickness
         });
 
         // Right boundary
         this.segments.push({
-            x1: this.width,
-            y1: 0,
+            x1: this.width + thickness,
+            y1: -thickness,
+            x2: this.width + thickness,
+            y2: this.height + thickness,
+            isBoundary: true,
+            thickness: thickness
+        });
+
+        // Add a floor platform near the bottom of the level
+        const floorY = this.height - 100; // 100 pixels from the bottom
+        this.segments.push({
+            x1: 0,
+            y1: floorY,
             x2: this.width,
-            y2: this.height
+            y2: floorY,
+            isFloor: true // Mark as floor for visual distinction
         });
     }
-
-    /*
-    createFigureEight() {
-        // Parameters for the figure-eight
-        const centerX = this.width / 2;
-        const centerY = this.height / 2;
-        const radiusX = this.width / 3; // Larger radius
-        const radiusY = this.height / 3; // Larger radius
-        const numPoints = 60; // More points for smoother curve
-
-        // Generate points for a figure-eight (lemniscate of Bernoulli)
-        const points = [];
-        for (let i = 0; i < numPoints; i++) {
-            const t = (i / numPoints) * Math.PI * 2;
-            const denominator = 1 + Math.sin(t) * Math.sin(t);
-
-            // Parametric equation for figure-eight
-            const x = centerX + (radiusX * Math.cos(t) * Math.sin(t)) / denominator;
-            const y = centerY + (radiusY * Math.sin(t) * Math.cos(t)) / denominator;
-
-            points.push({ x, y });
-        }
-
-        // Create segments from points with a gap for the track width
-        const trackWidth = 150; // Wider track to accommodate the wrecking ball
-        const innerPoints = [];
-        const outerPoints = [];
-
-        // Generate inner and outer track points
-        for (let i = 0; i < points.length; i++) {
-            const curr = points[i];
-            const next = points[(i + 1) % points.length];
-
-            // Calculate normal vector
-            const dx = next.x - curr.x;
-            const dy = next.y - curr.y;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            const nx = -dy / len; // Normal x component
-            const ny = dx / len;  // Normal y component
-
-            // Create inner and outer points
-            innerPoints.push({
-                x: curr.x + nx * trackWidth / 2,
-                y: curr.y + ny * trackWidth / 2
-            });
-
-            outerPoints.push({
-                x: curr.x - nx * trackWidth / 2,
-                y: curr.y - ny * trackWidth / 2
-            });
-        }
-
-        // Create inner track segments
-        for (let i = 0; i < innerPoints.length; i++) {
-            const p1 = innerPoints[i];
-            const p2 = innerPoints[(i + 1) % innerPoints.length];
-
-            this.segments.push({
-                x1: p1.x,
-                y1: p1.y,
-                x2: p2.x,
-                y2: p2.y
-            });
-        }
-
-        // Create outer track segments
-        for (let i = 0; i < outerPoints.length; i++) {
-            const p1 = outerPoints[i];
-            const p2 = outerPoints[(i + 1) % outerPoints.length];
-
-            this.segments.push({
-                x1: p1.x,
-                y1: p1.y,
-                x2: p2.x,
-                y2: p2.y
-            });
-        }
-
-        // Add some platforms inside the figure-eight
-        this.addPlatforms();
-    }
-    */
 
     addPlatforms() {
         // Add random obstacles around the map
@@ -327,28 +261,46 @@ class Level {
     }
 
     draw(ctx, cameraX, cameraY) {
-        // Draw the figure-eight track and obstacles
-        ctx.lineWidth = 8; // Thicker walls for better visibility
-
+        // Draw boundaries first
         for (const segment of this.segments) {
-            // Determine if this is a boundary segment
-            const isBoundary =
-                (segment.x1 === 0 && segment.x2 === 0) || // Left boundary
-                (segment.x1 === this.width && segment.x2 === this.width) || // Right boundary
-                (segment.y1 === 0 && segment.y2 === 0) || // Top boundary
-                (segment.y1 === this.height && segment.y2 === this.height); // Bottom boundary
+            if (segment.isBoundary) {
+                ctx.strokeStyle = '#990000'; // Darker red for boundaries
+                ctx.lineWidth = segment.thickness || 20;
+                
+                ctx.beginPath();
+                ctx.moveTo(segment.x1 - cameraX, segment.y1 - cameraY);
+                ctx.lineTo(segment.x2 - cameraX, segment.y2 - cameraY);
+                ctx.stroke();
 
-            // Use different colors for boundaries vs obstacles
-            ctx.strokeStyle = isBoundary ? '#ff5555' : '#2ecc71';
-
-            ctx.beginPath();
-            ctx.moveTo(segment.x1 - cameraX, segment.y1 - cameraY);
-            ctx.lineTo(segment.x2 - cameraX, segment.y2 - cameraY);
-            ctx.stroke();
+                // Debug: Draw boundary points
+                ctx.fillStyle = '#ff0000';
+                ctx.beginPath();
+                ctx.arc(segment.x1 - cameraX, segment.y1 - cameraY, 5, 0, Math.PI * 2);
+                ctx.arc(segment.x2 - cameraX, segment.y2 - cameraY, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
 
-        // Draw a grid for reference
+        // Draw other segments
+        for (const segment of this.segments) {
+            if (!segment.isBoundary) {
+                ctx.strokeStyle = segment.isFloor ? '#3498db' : '#2ecc71';
+                ctx.lineWidth = segment.isFloor ? 10 : 8;
+
+                ctx.beginPath();
+                ctx.moveTo(segment.x1 - cameraX, segment.y1 - cameraY);
+                ctx.lineTo(segment.x2 - cameraX, segment.y2 - cameraY);
+                ctx.stroke();
+            }
+        }
+
+        // Draw grid last
         this.drawGrid(ctx, cameraX, cameraY);
+
+        // Debug: Draw level dimensions
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-cameraX, -cameraY, this.width, this.height);
     }
 
     drawGrid(ctx, cameraX, cameraY) {

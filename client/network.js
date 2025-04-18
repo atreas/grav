@@ -7,7 +7,7 @@ class NetworkManager {
       this.remotePlayers = new Map(); // playerId -> remotePlayer
       this.connected = false;
       this.lastUpdateTime = 0;
-      this.updateInterval = 50; // Send position updates every 50ms
+      this.updateInterval = 30; // Send position updates every 30ms (increased from 50ms for smoother remote player movement)
     }
 
     connect() {
@@ -44,7 +44,10 @@ class NetworkManager {
         // Create remote players
         for (const playerData of data.players) {
           // Skip our own player
-          if (playerData.id === this.playerId) continue;
+          if (playerData.id === this.playerId) {
+            console.log('Skipping creating remote player for local player');
+            continue;
+          }
 
           this.addRemotePlayer(playerData);
         }
@@ -86,7 +89,12 @@ class NetworkManager {
       // New player joined
       this.socket.on('player-joined', (playerData) => {
         console.log('Player joined', playerData);
-        this.addRemotePlayer(playerData);
+        // Skip creating a remote player for our own player
+        if (playerData.id !== this.playerId) {
+          this.addRemotePlayer(playerData);
+        } else {
+          console.log('Skipping creating remote player for local player');
+        }
       });
 
       // Player left
@@ -308,13 +316,16 @@ class NetworkManager {
 
       this.lastUpdateTime = now;
 
-      // Send position update to server
+      // Send position update to server including wrecking ball position
       this.socket.emit('position-update', {
         x: this.game.ship.x,
         y: this.game.ship.y,
         rotation: this.game.ship.rotation,
         vx: this.game.ship.vx,
-        vy: this.game.ship.vy
+        vy: this.game.ship.vy,
+        // Add wrecking ball position
+        ballX: this.game.ship.wreckingBall.x,
+        ballY: this.game.ship.wreckingBall.y
       });
     }
 

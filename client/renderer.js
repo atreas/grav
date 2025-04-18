@@ -20,6 +20,9 @@ class Renderer {
         // Draw level at adjusted position
         level.draw(this.ctx, camera.x, camera.y);
 
+        // Draw debug visualization (camera bounds)
+        // camera.drawDebug(this.ctx);
+
         this.ctx.restore();
     }
 

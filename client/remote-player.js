@@ -24,7 +24,10 @@ class RemotePlayer {
         x: x,
         y: y + 120,
         size: 15,
-        distance: 120
+        distance: 120,
+        targetX: x,
+        targetY: y + 120,
+        hasServerPosition: false // Flag to indicate if we have server-provided position
       };
 
       // Add properties needed for collision detection and physics
@@ -42,6 +45,14 @@ class RemotePlayer {
       this.targetRotation = data.rotation;
       this.vx = data.vx;
       this.vy = data.vy;
+
+      // Update wrecking ball target position if provided
+      if (data.ballX !== undefined && data.ballY !== undefined) {
+        this.wreckingBall.targetX = data.ballX;
+        this.wreckingBall.targetY = data.ballY;
+        // Flag to indicate we have server-provided ball position
+        this.wreckingBall.hasServerPosition = true;
+      }
 
       // Reset interpolation timer
       this.interpolationTime = 0;
@@ -71,14 +82,30 @@ class RemotePlayer {
     }
 
     updateWreckingBall() {
-      // Simple physics for the wrecking ball
-      const angle = this.rotation + Math.PI; // Behind the ship
-      const targetX = this.x + Math.cos(angle) * this.wreckingBall.distance;
-      const targetY = this.y + Math.sin(angle) * this.wreckingBall.distance;
+      let targetX, targetY;
 
-      // Smooth movement
-      this.wreckingBall.x += (targetX - this.wreckingBall.x) * 0.1;
-      this.wreckingBall.y += (targetY - this.wreckingBall.y) * 0.1;
+      if (this.wreckingBall.hasServerPosition) {
+        // Use the server-provided position for the wrecking ball
+        targetX = this.wreckingBall.targetX;
+        targetY = this.wreckingBall.targetY;
+      } else {
+        // Fallback to local calculation if no server position is available
+        // Calculate the angle based on ship rotation
+        const angle = this.rotation + Math.PI; // Behind the ship
+
+        // Calculate target position with simplified physics
+        const velocityFactor = 2.0; // How much velocity affects the ball position
+        targetX = this.x + Math.cos(angle) * this.wreckingBall.distance - this.vx * velocityFactor;
+        targetY = this.y + Math.sin(angle) * this.wreckingBall.distance - this.vy * velocityFactor;
+      }
+
+      // Adjust smoothing factor based on velocity (faster ship = faster ball movement)
+      const speedFactor = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+      const smoothingFactor = Math.min(0.3, 0.1 + speedFactor * 0.02);
+
+      // Smooth movement with improved responsiveness
+      this.wreckingBall.x += (targetX - this.wreckingBall.x) * smoothingFactor;
+      this.wreckingBall.y += (targetY - this.wreckingBall.y) * smoothingFactor;
     }
 
     // Add collision detection methods to the remote player's wrecking ball
