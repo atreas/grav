@@ -3,6 +3,7 @@
 class LevelGenerator {
   constructor() {
     this.seed = Date.now(); // Default seed
+    this.levelType = 'technical'; // Default to technical level type
   }
 
   // Set a specific seed for deterministic generation
@@ -29,6 +30,10 @@ class LevelGenerator {
     return Math.floor(this.randomBetween(min, max + 1));
   }
 
+  setLevelType(type) {
+    this.levelType = type; // 'open' or 'technical'
+  }
+
   // Generate level data
   generateLevel(width, height) {
     // Initialize random generator with current seed
@@ -39,27 +44,102 @@ class LevelGenerator {
       width: width,
       height: height,
       segments: [],
-      obstacles: []
+      obstacles: [],
+      isNewMatch: true  // Add this flag to indicate it's a complete new level
     };
 
     // Add boundaries
     this.addBoundaries(levelData);
 
-    // Add random obstacles
-    this.addRandomObstacles(levelData, 15); // 15 random obstacles
+    if (this.levelType === 'technical') {
+      this.generateTechnicalLevel(levelData);
+    } else {
+      // Original 'open' level style
+      this.addRandomObstacles(levelData, 15);
+    }
 
     return levelData;
   }
 
+  generateTechnicalLevel(levelData) {
+    const gridSize = 400; // Size of each grid cell
+    const pathWidth = 150; // Width of the corridors
+
+    // Create a grid of walls
+    for (let x = gridSize; x < levelData.width; x += gridSize) {
+      for (let y = gridSize; y < levelData.height; y += gridSize) {
+        // Don't place walls in the center safe zone
+        const distFromCenter = Math.sqrt(
+          Math.pow(x - levelData.width/2, 2) + 
+          Math.pow(y - levelData.height/2, 2)
+        );
+        
+        if (distFromCenter < 300) continue;
+
+        // Randomly decide whether to place vertical or horizontal walls
+        if (this.random() < 0.7) { // 70% chance to place a wall
+          if (this.random() < 0.5) {
+            // Vertical wall with gap
+            const gapY = y + this.randomBetween(-gridSize/4, gridSize/4);
+            
+            // Wall segments above and below the gap
+            levelData.segments.push({
+              x1: x,
+              y1: y - gridSize/2,
+              x2: x,
+              y2: gapY - pathWidth/2,
+              isBoundary: false
+            });
+            
+            levelData.segments.push({
+              x1: x,
+              y1: gapY + pathWidth/2,
+              x2: x,
+              y2: y + gridSize/2,
+              isBoundary: false
+            });
+          } else {
+            // Horizontal wall with gap
+            const gapX = x + this.randomBetween(-gridSize/4, gridSize/4);
+            
+            // Wall segments left and right of the gap
+            levelData.segments.push({
+              x1: x - gridSize/2,
+              y1: y,
+              x2: gapX - pathWidth/2,
+              y2: y,
+              isBoundary: false
+            });
+            
+            levelData.segments.push({
+              x1: gapX + pathWidth/2,
+              y1: y,
+              x2: x + gridSize/2,
+              y2: y,
+              isBoundary: false
+            });
+          }
+        }
+      }
+    }
+
+    // Add a few random obstacles in larger open areas
+    this.addRandomObstacles(levelData, 5);
+  }
+
   // Add level boundaries
   addBoundaries(levelData) {
+    const thickness = 20;
+
     // Top boundary
     levelData.segments.push({
       x1: 0,
       y1: 0,
       x2: levelData.width,
       y2: 0,
-      isBoundary: true
+      isBoundary: true,
+      thickness: thickness,
+      permanent: true
     });
 
     // Bottom boundary
@@ -68,7 +148,9 @@ class LevelGenerator {
       y1: levelData.height,
       x2: levelData.width,
       y2: levelData.height,
-      isBoundary: true
+      isBoundary: true,
+      thickness: thickness,
+      permanent: true
     });
 
     // Left boundary
@@ -77,7 +159,9 @@ class LevelGenerator {
       y1: 0,
       x2: 0,
       y2: levelData.height,
-      isBoundary: true
+      isBoundary: true,
+      thickness: thickness,
+      permanent: true
     });
 
     // Right boundary
@@ -86,7 +170,9 @@ class LevelGenerator {
       y1: 0,
       x2: levelData.width,
       y2: levelData.height,
-      isBoundary: true
+      isBoundary: true,
+      thickness: thickness,
+      permanent: true
     });
   }
 
@@ -292,6 +378,40 @@ class LevelGenerator {
         isBoundary: false
       });
     }
+  }
+
+  regenerateObstacles(width, height) {
+    // Initialize random generator with current seed
+    this.random = this.createSeededRandom(this.seed);
+
+    // Create new level data structure
+    const levelData = {
+      width: width,
+      height: height,
+      segments: [],
+      obstacles: [],
+      isNewMatch: false  // This is just an obstacle refresh
+    };
+
+    // Add boundaries first
+    this.addBoundaries(levelData);
+
+    // Store the boundary segments
+    const boundarySegments = levelData.segments.filter(s => s.permanent);
+
+    if (this.levelType === 'technical') {
+      this.generateTechnicalLevel(levelData);
+    } else {
+      this.addRandomObstacles(levelData, 15);
+    }
+
+    // Ensure boundaries are preserved by adding them back
+    levelData.segments = [
+      ...boundarySegments,
+      ...levelData.segments.filter(s => !s.permanent)
+    ];
+
+    return levelData;
   }
 }
 

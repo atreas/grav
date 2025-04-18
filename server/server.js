@@ -59,8 +59,9 @@ const io = socketIO(server, {
 // Create level generator
 const levelGenerator = new LevelGenerator();
 
-// Current level data
-let currentLevelData = null;
+
+// Generate initial level
+let currentLevelData = levelGenerator.generateLevel(8000, 4000);
 
 // Serve static files from the client directory
 app.use(express.static(path.join(__dirname, '../client')));
@@ -214,6 +215,7 @@ app.use('/admin/assets', express.static(path.join(__dirname, 'admin', 'assets'))
 
 // Game state
 const players = new Map(); // playerId -> playerData
+const destroyedShips = new Set(); // Set of recently destroyed ship IDs to prevent multiple points
 let gameInProgress = false;
 let countdownActive = false;
 let celebrationActive = false;
@@ -289,7 +291,9 @@ io.on('connection', (socket) => {
     points: 0,
     activeCheckpoint: -1,
     invincible: true, // Start as invincible
-    invincibleUntil: Date.now() + 5000 // Invincible for 5 seconds
+    invincibleUntil: Date.now() + 5000, // Invincible for 5 seconds
+    ballX: spawnX, // Initial wrecking ball X position
+    ballY: spawnY + 120 // Initial wrecking ball Y position (below the ship)
   };
 
   // Add player to the game
@@ -339,6 +343,12 @@ io.on('connection', (socket) => {
       player.vx = data.vx;
       player.vy = data.vy;
 
+      // Store wrecking ball position if provided
+      if (data.ballX !== undefined && data.ballY !== undefined) {
+        player.ballX = data.ballX;
+        player.ballY = data.ballY;
+      }
+
       // Check if invincibility has expired
       if (player.invincible && Date.now() > player.invincibleUntil) {
         player.invincible = false;
@@ -354,6 +364,8 @@ io.on('connection', (socket) => {
         rotation: data.rotation,
         vx: data.vx,
         vy: data.vy,
+        ballX: data.ballX,
+        ballY: data.ballY,
         invincible: player.invincible
       });
     }
@@ -410,6 +422,21 @@ io.on('connection', (socket) => {
         // Target is invincible, no destruction
         return;
       }
+
+      // Check if this ship was already destroyed recently (prevent multiple points)
+      if (destroyedShips.has(targetId)) {
+        console.log(`Ship ${targetId} was already destroyed, not awarding points again`);
+        return;
+      }
+
+      // Add to destroyed ships set
+      destroyedShips.add(targetId);
+
+      // Set a timeout to remove from the set after 2 seconds
+      // This prevents multiple destroy events for the same collision
+      setTimeout(() => {
+        destroyedShips.delete(targetId);
+      }, 2000);
 
       // Award 5 points to the destroyer
       const destroyer = players.get(socket.id);
@@ -536,9 +563,14 @@ function startGame() {
   matchStartTime = Date.now();
   matchTimeRemaining = MATCH_DURATION;
 
-  // Generate a new level with a new seed
+  // Clear the set of destroyed ships when a new match begins
+  destroyedShips.clear();
+
+  // Generate new obstacles with a new seed
   levelGenerator.setSeed(Date.now());
-  currentLevelData = levelGenerator.generateLevel(8000, 8000); // Use the same size as client
+  
+  // Use regenerateObstacles instead of generateLevel
+  currentLevelData = levelGenerator.regenerateObstacles(8000, 4000);
 
   // Reset all player points and set invincibility
   for (const player of players.values()) {
@@ -671,6 +703,9 @@ function resetGameState() {
   countdownActive = false;
   celebrationActive = false;
   isPreMatchCountdown = false;
+
+  // Clear the set of destroyed ships
+  destroyedShips.clear();
 
   if (countdownInterval) {
     clearInterval(countdownInterval);
