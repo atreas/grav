@@ -47,6 +47,10 @@ rm -f README.md  # Explicitly remove README.md
 cp -r deploy/* .
 rm -rf deploy
 
+# Copy shared files directly to root
+cp shared/constants.js .
+cp shared/utils.js .
+
 # Add .nojekyll file to prevent Jekyll processing
 touch .nojekyll
 
